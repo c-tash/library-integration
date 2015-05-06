@@ -1,5 +1,6 @@
 package ru.umeta.libraryintegration.dao;
 
+import org.hibernate.SessionFactory;
 import ru.umeta.libraryintegration.model.Document;
 
 /**
@@ -7,8 +8,8 @@ import ru.umeta.libraryintegration.model.Document;
  */
 public class DocumentDao extends AbstractDao<Document> {
 
-    public DocumentDao() {
-        super(Document.class);
+    public DocumentDao(SessionFactory sessionFactory) {
+        super(sessionFactory);
     }
 
 }

@@ -1,5 +1,6 @@
 package ru.umeta.libraryintegration.dao;
 
+import org.hibernate.SessionFactory;
 import ru.umeta.libraryintegration.model.StringCache;
 
 /**
@@ -7,7 +8,7 @@ import ru.umeta.libraryintegration.model.StringCache;
  */
 public class StringCacheDao extends AbstractDao<StringCache> {
 
-    public StringCacheDao() {
-        super(StringCache.class);
+    public StringCacheDao(SessionFactory sessionFactory) {
+        super(sessionFactory);
     }
 }

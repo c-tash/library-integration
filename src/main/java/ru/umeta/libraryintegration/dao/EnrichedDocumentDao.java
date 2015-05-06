@@ -1,5 +1,6 @@
 package ru.umeta.libraryintegration.dao;
 
+import org.hibernate.SessionFactory;
 import ru.umeta.libraryintegration.model.EnrichedDocument;
 
 /**
@@ -7,8 +8,8 @@ import ru.umeta.libraryintegration.model.EnrichedDocument;
  */
 public class EnrichedDocumentDao extends AbstractDao<EnrichedDocument> {
 
-    public EnrichedDocumentDao() {
-        super(EnrichedDocument.class);
+    public EnrichedDocumentDao(SessionFactory sessionFactory) {
+        super(sessionFactory);
     }
 
 }

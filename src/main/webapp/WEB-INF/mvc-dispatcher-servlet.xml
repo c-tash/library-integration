@@ -6,8 +6,14 @@
         http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
 
     <mvc:annotation-driven/>
+
     <context:component-scan base-package="ru.umeta.libraryintegration.controller"/>
 
+    <bean class="ru.umeta.libraryintegration.dao.ProtocolDao">
+        <constructor-arg ref="sessionFactory"/>
+    </bean>
+
+    <import resource="db/data-source.xml" />
 
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
         <property name="prefix" value="/WEB-INF/pages/"/>
@@ -25,6 +31,10 @@
     <bean id="jsonMessageConverter" class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
     </bean>
 
+    <bean class="ru.umeta.libraryintegration.dao.AbstractDao" abstract="true">
+        <constructor-arg ref="sessionFactory" />
+    </bean>
+
     <bean class="ru.umeta.libraryintegration.service.DatabaseService"/>
 
     <bean class="ru.umeta.libraryintegration.service.MainService">
@@ -32,7 +42,5 @@
     </bean>
 
     <bean id="modsXMLParser" class="ru.umeta.libraryintegration.parser.ModsXMLParser"/>
-
-    <import resource="db/data-source.xml" />
 
 </beans>
