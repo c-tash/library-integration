@@ -76,6 +76,7 @@ public class EnrichedDocumentDao  extends AbstractDao<EnrichedDocument> {
         return c;
     }
 
+    @SuppressWarnings("unchecked")
     public List<EnrichedDocument> getNearDuplicatesWithIsbn(Document document) {
         Criteria c = getEmptyCriteria();
         c.add(Restrictions.eq("enriched.isbn", document.getIsbn()));
@@ -84,6 +85,7 @@ public class EnrichedDocumentDao  extends AbstractDao<EnrichedDocument> {
 
     }
 
+    @SuppressWarnings("unchecked")
     public List<EnrichedDocument> getNearDuplicatesWithNullIsbn(Document document) {
         Criteria c = getEmptyCriteria();
         c.add(Restrictions.isNull("enriched.isbn"));

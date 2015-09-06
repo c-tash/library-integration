@@ -45,26 +45,39 @@ public class DocumentService {
 
         for (ParseResult parseResult : checkNotNull(resultList)) {
             if (parseResult instanceof ModsParseResult) {
+
                 Document document = new Document();
                 ModsParseResult modsParseResult = (ModsParseResult) parseResult;
 
+                long startTime = System.nanoTime();
                 document.setAuthor(stringHashService.getFromRepository(modsParseResult.getAuthor()));
+                long authorSearchTime = System.nanoTime();
+                System.out.println("authorSearchTime" + (double) (authorSearchTime - startTime) / 1000000000.0);
                 document.setTitle(stringHashService.getFromRepository(modsParseResult.getTitle()));
+                long titleSearchTime = System.nanoTime();
+                System.out.println("titleSearchTime" + (double) (titleSearchTime - authorSearchTime) / 1000000000.0);
                 document.setCreationTime(new Date());
                 document.setIsbn(modsParseResult.getIsbn());
                 document.setProtocol(protocolService.getFromRepository(protocolName == null ? DEFAULT_PROTOCOL : protocolName));
-                try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                     modsParseResult.getModsDefinition().save(outputStream);
                     document.setXml(new String(outputStream.toByteArray(),"UTF-8"));
                 } catch (IOException e) {
                     e.printStackTrace();
                     continue;
                 }
+                long findEnrichedStartTime = System.nanoTime();
                 EnrichedDocument enrichedDocument = findEnrichedDocument(document);
+                long findEnrichedEndTime = System.nanoTime();
+                System.out.println("findEnrichedEndTime" + (double) (findEnrichedEndTime - findEnrichedStartTime) / 1000000000.0);
                 if (enrichedDocument != null) {
+                    long mergeStartTime = System.nanoTime();
                     mergeDocuments(modsParseResult, enrichedDocument);
                     enrichedDocumentDao.saveOrUpdate(enrichedDocument);
+                    long mergeEndTime = System.nanoTime();
+                    System.out.println("mergeEndTime" + (double) (mergeEndTime - mergeStartTime) / 1000000000.0);
                 } else {
+                    long creationTime = System.nanoTime();
                     enrichedDocument = new EnrichedDocument();
                     enrichedDocument.setAuthor(document.getAuthor());
                     enrichedDocument.setTitle(document.getTitle());
@@ -72,11 +85,16 @@ public class DocumentService {
                     enrichedDocument.setXml(document.getXml());
                     enrichedDocument.setCreationTime(document.getCreationTime());
                     enrichedDocument.setId(enrichedDocumentDao.save(enrichedDocument).longValue());
+                    long creationEndTime = System.nanoTime();
+                    System.out.println("new file save time" + (double) (creationEndTime - creationTime) / 1000000000.0);
                     newEnriched++;
                     document.setDistance(1.);
                 }
+                long createDocTime = System.nanoTime();
                 document.setEnrichedDocument(enrichedDocument);
                 documentDao.save(document);
+                long createDocEndTime = System.nanoTime();
+                System.out.println("new file save time" + (double) (createDocEndTime - createDocTime) / 1000000000.0);
                 parsedDocs++;
             }
         }

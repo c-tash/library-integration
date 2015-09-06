@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 import ru.umeta.libraryintegration.model.StringHash;
 import ru.umeta.libraryintegration.util.Generics;
 
-import javax.transaction.Transactional;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -14,7 +14,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Created by k.kosolapov on 30.04.2015.
  */
-@Transactional
 public abstract class AbstractDao<E>{
 
     private final SessionFactory sessionFactory;
@@ -133,7 +132,7 @@ public abstract class AbstractDao<E>{
      * @see Session#get(Class, Serializable)
      */
     @SuppressWarnings("unchecked")
-    protected E get(Serializable id) {
+    public E get(Number id) {
         Session session = currentSession();
         Transaction transaction = null;
         E result = null;
@@ -169,6 +168,13 @@ public abstract class AbstractDao<E>{
     @SuppressWarnings("unchecked")
     public Number save(E entity) {
         return (Number) currentSession().save(checkNotNull(entity));
+    }
+
+    @SuppressWarnings("unchecked")
+    public void save(List<E> entityList) {
+        for (E entity : entityList) {
+            currentSession().save(checkNotNull(entity));
+        }
     }
 
     @SuppressWarnings("unchecked")
