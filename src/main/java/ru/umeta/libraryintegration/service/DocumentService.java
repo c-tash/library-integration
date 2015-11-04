@@ -13,8 +13,9 @@ import ru.umeta.libraryintegration.parser.ModsXMLParser;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -41,65 +42,111 @@ public class DocumentService {
     @Autowired
     private ModsXMLParser modsXMLParser;
 
+    private static final ConcurrentMap<Integer, ReentrantLock> LOCK_MAP = new ConcurrentHashMap<>();
+
     public UploadResult processDocumentList(List<ParseResult> resultList, String protocolName) {
         int newEnriched = 0;
         int parsedDocs = 0;
-
+        ArrayList<Thread> threadList = new ArrayList<>();
+        int i = 0;
+        ExecutorService executor = Executors.newFixedThreadPool(10);
         for (ParseResult parseResult : checkNotNull(resultList)) {
             if (parseResult instanceof ModsParseResult) {
                 try {
                     Document document = new Document();
                     ModsParseResult modsParseResult = (ModsParseResult) parseResult;
 
-                    document.setAuthor(stringHashService.getFromRepository(modsParseResult.getAuthor()));
-                    document.setTitle(stringHashService.getFromRepository(modsParseResult.getTitle()));
-                    document.setCreationTime(new Date());
-                    String isbn = modsParseResult.getIsbn();
-                    if (StringUtils.isEmpty(isbn)) {
-                        isbn = null;
-                    }
-                    document.setIsbn(isbn);
-                    document.setProtocol(protocolService.getFromRepository(protocolName == null ? DEFAULT_PROTOCOL : protocolName));
-                    document.setPublishYear(modsParseResult.getPublishYear());
-                    try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                        modsParseResult.getModsDefinition().save(outputStream);
-                        document.setXml(new String(outputStream.toByteArray(),"UTF-8"));
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        continue;
-                    }
-                    EnrichedDocument enrichedDocument = findEnrichedDocument(document);
-                    if (enrichedDocument != null) {
-                        if (enrichedDocument.getPublishYear() == null) {
-                            enrichedDocument.setPublishYear(document.getPublishYear());
+                    Thread thread = new Thread(() -> {
+                        Integer publishYear = modsParseResult.getPublishYear();
+                        if (publishYear != null && publishYear.equals(-1)) {
+                            publishYear = null;
                         }
-                        if (enrichedDocument.getIsbn() == null) {
+                        ReentrantLock lockForNullPublishYear = new ReentrantLock();
+                        ReentrantLock lockForPublishYear = new ReentrantLock();
+
+                        ReentrantLock mapLockForNullPublishYear = LOCK_MAP.putIfAbsent(-1, lockForNullPublishYear);
+                        ReentrantLock mapLockForPublishYear = null;
+
+                        if (mapLockForNullPublishYear != null) {
+                            lockForNullPublishYear = mapLockForNullPublishYear;
+                        }
+                        if (publishYear != null) {
+                            mapLockForPublishYear = LOCK_MAP.putIfAbsent(publishYear, lockForPublishYear);
+                            if (mapLockForPublishYear != null) {
+                                lockForPublishYear = mapLockForPublishYear;
+                            }
+                            lockForPublishYear.lock();
+                        } else {
+
+                        }
+
+
+                        lockForNullPublishYear.lock();
+
+
+                        document.setAuthor(stringHashService.getFromRepository(modsParseResult.getAuthor()));
+                        document.setTitle(stringHashService.getFromRepository(modsParseResult.getTitle()));
+                        document.setCreationTime(new Date());
+                        String isbn = modsParseResult.getIsbn();
+                        if (StringUtils.isEmpty(isbn)) {
+                            isbn = null;
+                        }
+                        document.setIsbn(isbn);
+                        document.setProtocol(protocolService.getFromRepository(protocolName == null ? DEFAULT_PROTOCOL : protocolName));
+                        document.setPublishYear(publishYear);
+                        try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                            modsParseResult.getModsDefinition().save(outputStream);
+                            document.setXml(new String(outputStream.toByteArray(),"UTF-8"));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            return;
+                        }
+                        EnrichedDocument enrichedDocument = findEnrichedDocument(document, lockForNullPublishYear);
+                        if (enrichedDocument != null) {
+                            if (enrichedDocument.getPublishYear() == null) {
+                                enrichedDocument.setPublishYear(document.getPublishYear());
+                            }
+                            if (enrichedDocument.getIsbn() == null) {
+                                enrichedDocument.setIsbn(document.getIsbn());
+                            }
+                            mergeDocuments(modsParseResult, enrichedDocument);
+                            enrichedDocumentDao.saveOrUpdate(enrichedDocument);
+                        } else {
+                            enrichedDocument = new EnrichedDocument();
+                            enrichedDocument.setAuthor(document.getAuthor());
+                            enrichedDocument.setTitle(document.getTitle());
                             enrichedDocument.setIsbn(document.getIsbn());
+                            enrichedDocument.setXml(document.getXml());
+                            enrichedDocument.setCreationTime(document.getCreationTime());
+                            enrichedDocument.setPublishYear(document.getPublishYear());
+                            enrichedDocument.setId(enrichedDocumentDao.save(enrichedDocument).longValue());
+                            //newEnriched++;
+                            document.setDistance(1.);
                         }
-                        mergeDocuments(modsParseResult, enrichedDocument);
-                        enrichedDocumentDao.saveOrUpdate(enrichedDocument);
-                    } else {
-                        enrichedDocument = new EnrichedDocument();
-                        enrichedDocument.setAuthor(document.getAuthor());
-                        enrichedDocument.setTitle(document.getTitle());
-                        enrichedDocument.setIsbn(document.getIsbn());
-                        enrichedDocument.setXml(document.getXml());
-                        enrichedDocument.setCreationTime(document.getCreationTime());
-                        enrichedDocument.setPublishYear(document.getPublishYear());
-                        enrichedDocument.setId(enrichedDocumentDao.save(enrichedDocument).longValue());
-                        newEnriched++;
-                        document.setDistance(1.);
-                    }
-                    document.setEnrichedDocument(enrichedDocument);
-                    documentDao.save(document);
-                    parsedDocs++;
+                        document.setEnrichedDocument(enrichedDocument);
+                        documentDao.save(document);
+                        unlockLockIfHold(lockForNullPublishYear);
+                        unlockLockIfHold(lockForPublishYear);
+                        //parsedDocs++;
+                    });
+
+                    threadList.add(thread);
+                    executor.submit(thread);
+
                 } catch (Exception e) {
-//                    System.err.println("ERROR. Failed to add a document with title {" +
-//                            parseResult.getTitle() + "}, author {" +
-//                            parseResult.getAuthor() + "}");
+                    System.err.println("ERROR. Failed to add a document with title {" +
+                            parseResult.getTitle() + "}, author {" +
+                            parseResult.getAuthor() + "}");
                 }
 
 
+            }
+        }
+        for (Thread thread : threadList) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
         return new UploadResult(parsedDocs, newEnriched);
@@ -109,7 +156,7 @@ public class DocumentService {
         modsXMLParser.enrich(modsParseResult.getModsDefinition(),enrichedDocument);
     }
 
-    private EnrichedDocument findEnrichedDocument(Document document) {
+    private EnrichedDocument findEnrichedDocument(Document document, ReentrantLock lockForNullPublishYear) {
 
         //first check whether the document has isbn or not
         String isbn = document.getIsbn();
@@ -142,6 +189,8 @@ public class DocumentService {
                     if (nearDuplicates == null || nearDuplicates.size() == 0) {
                         nearDuplicates = enrichedDocumentDao.getNearDuplicatesWithPublishYear(document);
                     }
+                } else {
+                    lockForNullPublishYear.unlock();
                 }
             }
 
@@ -168,11 +217,21 @@ public class DocumentService {
                 }
 
             }
+            if (closestDocument == null || closestDocument.getPublishYear() == null) {
+                unlockLockIfHold(lockForNullPublishYear);
+            }
+
             document.setDistance(maxDistance);
             return closestDocument;
         }
 
         return null;
+    }
+
+    private void unlockLockIfHold(ReentrantLock lockForNullPublishYear) {
+        if (lockForNullPublishYear.getHoldCount() > 0) {
+            lockForNullPublishYear.unlock();
+        }
     }
 
     public List<ParseResult> addNoise(ParseResult parseResult, int saltLevel) {
