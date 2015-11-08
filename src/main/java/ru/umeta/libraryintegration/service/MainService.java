@@ -23,9 +23,6 @@ public class MainService {
     private final IXMLParser parser;
 
     @Autowired
-    private StringHashService stringHashService;
-
-    @Autowired
     private DocumentService documentService;
 
     public MainService(IXMLParser parser) {
