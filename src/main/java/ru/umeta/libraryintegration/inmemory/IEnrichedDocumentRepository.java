@@ -6,6 +6,7 @@ import ru.umeta.libraryintegration.model.EnrichedDocumentLite;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by ctash on 24.11.15.
@@ -16,7 +17,7 @@ public interface IEnrichedDocumentRepository {
 
     List<EnrichedDocumentLite> getNearDuplicates(EnrichedDocumentLite document);
 
-    List<EnrichedDocumentLite> getNearDuplicates(EnrichedDocumentLite document, List<EnrichedDocumentLite> current);
+    List<EnrichedDocumentLite> getNearDuplicates(EnrichedDocumentLite document, Set<EnrichedDocumentLite> current);
 
     List<EnrichedDocumentLite> getNearDuplicatesWithIsbn(Document document);
 

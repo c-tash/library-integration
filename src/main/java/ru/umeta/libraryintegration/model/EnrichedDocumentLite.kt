@@ -9,6 +9,15 @@ data class EnrichedDocumentLite(
         val titleId: Long,
         var nullIsbn: Boolean = true) {
     fun isbnIsNull(): Boolean {
-        return nullIsbn;
+        return nullIsbn
+    }
+
+    override fun hashCode() : Int {
+        val prime = 31
+        var result = id.hashCode()
+        result = result*prime + authorId.hashCode()
+        result = result*prime + titleId.hashCode()
+        result = result*prime + nullIsbn.hashCode()
+        return result
     }
 }

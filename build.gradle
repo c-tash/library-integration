@@ -43,7 +43,7 @@ task wrapper(type: Wrapper) {
 }
 
 buildscript {
-    ext.kotlin_version = '1.0.0-beta-4584'
+    ext.kotlin_version = '1.0.0'
     repositories {
         mavenCentral()
     }
@@ -55,3 +55,11 @@ sourceSets {
     main.java.srcDirs += 'src/main/kotlin'
 }
 
+jar {
+    //include contents of output dir
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    manifest {
+        attributes 'Manifest-Version': '1.0',
+                'Main-Class': 'ru.umeta.libraryintegration.controller.MainKt'
+    }
+}

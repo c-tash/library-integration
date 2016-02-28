@@ -19,6 +19,9 @@ fun main(args: Array<String>) {
         "-find" -> MainService.use {
             it.find()
         }
+        "-collect" -> MainService.use {
+            it.collect();
+        }
     }
 
 }

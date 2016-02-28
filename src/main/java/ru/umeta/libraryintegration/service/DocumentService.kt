@@ -1,5 +1,6 @@
 package ru.umeta.libraryintegration.service
 
+import com.sun.deploy.util.OrderedHashSet
 import gnu.trove.set.hash.TLongHashSet
 import org.springframework.util.StringUtils
 import ru.umeta.libraryintegration.inmemory.EnrichedDocumentRepository
@@ -72,7 +73,7 @@ object DocumentService : AutoCloseable {
 
         val used = TLongHashSet()
         val component = ArrayList<EnrichedDocumentLite>()
-        var filtered= ArrayList<EnrichedDocumentLite>()
+        var filtered = HashSet<EnrichedDocumentLite>()
         var stack = Stack<EnrichedDocumentLite>()
 
         fun apply(document: EnrichedDocumentLite) {
@@ -83,16 +84,45 @@ object DocumentService : AutoCloseable {
                 if (!used.contains(id)) {
                     val authorId = cur.authorId
                     val titleId = cur.titleId
+                    val authorTokens = stringHashService.getById(authorId).tokens
+                    val titleTokens = stringHashService.getById(titleId).tokens
                     used.add(id)
                     component.add(cur)
                     //filter documents which have the nearest measure of 0.7 or more
                     val current = filtered;
                     val nearDuplicates = enrichedDocumentRepository.getNearDuplicates(cur, current)
-                    filtered = nearDuplicates.filter {
-                            (stringHashService.distance(authorId, it.authorId)
-                            + stringHashService.distance(titleId, it.titleId) >= 0.7 * 2)}
-                        .toArrayList();
-                    current.forEach { filtered.add(it)}
+
+
+                    filtered = HashSet(nearDuplicates.filter {
+                        if (used.contains(it.id)) {
+                            false
+                        } else {
+                            val itAuthorTokens = stringHashService.getById(it.authorId).tokens
+                            var authorTokensRatio: Double = authorTokens.size() * 1.0 / itAuthorTokens.size()
+                            if (authorTokensRatio > 1) {
+                                authorTokensRatio = 1.0 / authorTokensRatio
+                            }
+
+                            if (authorTokensRatio < 0.4) {
+                                false
+                            } else {
+                                val itTitleTokens = stringHashService.getById(it.titleId).tokens
+                                var titleTokensRatio: Double = titleTokens.size() * 1.0 / itTitleTokens.size()
+                                if (titleTokensRatio > 1) {
+                                    titleTokensRatio = 1.0 / titleTokensRatio
+                                }
+
+                                if (authorTokensRatio + titleTokensRatio < 0.7 * 2) {
+                                    false
+                                } else {
+                                    (stringHashService.distance(authorTokens, itAuthorTokens) + stringHashService.distance
+                                    (titleTokens, itTitleTokens) >= 0.7 * 2)
+                                }
+                            }
+                        }
+                    })
+
+                    current.forEach { filtered.add(it) }
                     for (duplicate in filtered) {
                         stack.add(duplicate)
                     }

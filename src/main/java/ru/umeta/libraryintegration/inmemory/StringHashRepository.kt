@@ -21,12 +21,12 @@ object StringHashRepository : AutoCloseable {
     private val stringHashFsPersister = StringHashFsPersister
     public var isInit = false;
 
-    init {
-        val lastId = stringHashFsPersister.fillMaps(mapHashCodeToId, mapIdToSimHash, mapIdToTokens)
-        identity = lastId + 1
-        isInit = true;
-        //        fsPersister.fillMap(tokens);
-    }
+//    init {
+//        val lastId = stringHashFsPersister.fillMaps(mapHashCodeToId, mapIdToSimHash, mapIdToTokens)
+//        identity = lastId + 1
+//        isInit = true;
+//        //        fsPersister.fillMap(tokens);
+//    }
 
     fun getByHashCode(string: String): Long {
         return mapHashCodeToId[string.javaHashCode()]

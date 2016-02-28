@@ -7,9 +7,9 @@ import ru.umeta.libraryintegration.json.UploadResult
 import ru.umeta.libraryintegration.model.EnrichedDocumentLite
 import ru.umeta.libraryintegration.parser.IXMLParser
 import ru.umeta.libraryintegration.parser.ModsXMLParser
-import java.io.Closeable
-import java.io.File
+import java.io.*
 import java.nio.charset.Charset
+import java.nio.file.Files
 import java.util.*
 
 /**
@@ -114,6 +114,26 @@ object MainService : Closeable {
         }
 
         return result
+    }
+
+    fun collect() {
+        var sections = 0
+        var count = 0
+        var sectionCount = 0
+        var maxSelectionCount = 0
+        Files.lines(File("duplicates.blob").toPath()).forEachOrdered {
+            if (it.startsWith("SECTION")) {
+                sections++
+                maxSelectionCount = Math.max(maxSelectionCount, sectionCount)
+                sectionCount = 0
+            } else {
+                count++
+                sectionCount++
+            }
+        }
+        println(sections)
+        println(count)
+        println(maxSelectionCount)
     }
 }
 
