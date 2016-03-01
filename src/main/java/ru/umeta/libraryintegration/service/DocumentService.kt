@@ -12,6 +12,7 @@ import ru.umeta.libraryintegration.model.EnrichedDocumentLite
 import java.util.*
 
 
+
 /**
  * Service for operating with [Document] and [EnrichedDocument]
  * Created by ctash on 28.04.2015.
@@ -61,12 +62,12 @@ object DocumentService : AutoCloseable {
         return UploadResult(parsedDocs, newEnriched)
     }
 
-    fun findEnrichedDocuments(document: EnrichedDocumentLite): List<EnrichedDocumentLite> {
+    fun findEnrichedDocuments(document: EnrichedDocumentLite): DFS {
 
         val dfs = DFS()
         dfs.apply(document);
 
-        return dfs.component;
+        return dfs;
     }
 
     class DFS {
@@ -75,6 +76,8 @@ object DocumentService : AutoCloseable {
         val component = ArrayList<EnrichedDocumentLite>()
         var filtered = HashSet<EnrichedDocumentLite>()
         var stack = Stack<EnrichedDocumentLite>()
+        var iterationsLength = 0;
+        var iterationsSetInter = 0;
 
         fun apply(document: EnrichedDocumentLite) {
             stack.add(document)
@@ -104,6 +107,7 @@ object DocumentService : AutoCloseable {
                             }
 
                             if (authorTokensRatio < 0.4) {
+                                iterationsLength++
                                 false
                             } else {
                                 val itTitleTokens = stringHashService.getById(it.titleId).tokens
@@ -113,8 +117,10 @@ object DocumentService : AutoCloseable {
                                 }
 
                                 if (authorTokensRatio + titleTokensRatio < 0.7 * 2) {
+                                    iterationsLength++
                                     false
                                 } else {
+                                    iterationsSetInter++;
                                     (stringHashService.distance(authorTokens, itAuthorTokens) + stringHashService.distance
                                     (titleTokens, itTitleTokens) >= 0.7 * 2)
                                 }

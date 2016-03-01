@@ -43,6 +43,15 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
 
     private var identity = 0L
 
+    init {
+        while (StringHashRepository.isInit == false) {
+            (this as java.lang.Object).wait(10)
+        }
+        val lastId = fsPersister.applyToPersisted { enrichedDocument: EnrichedDocument -> this.putIntoMaps(enrichedDocument) }
+        identity = lastId + 1
+    }
+
+
     override fun getNearDuplicates(document: EnrichedDocumentLite, current: Set<EnrichedDocumentLite>)
             : List<EnrichedDocumentLite> {
         val authorId = document.authorId
@@ -62,9 +71,9 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
         }
 
         for (ti in 1..3) {
-            for (tj in ti..3) {
+            for (tj in ti+1..4) {
                 for (ai in 1..3) {
-                    for (aj in ai..3) {
+                    for (aj in ai+1..4) {
                         val hash = hashes.getByIndex(ti, tj, ai, aj)
                         maps.getByIndex(ti, tj, ai, aj).get(hash).forEach(filterFunction)
                     }
@@ -141,9 +150,9 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
         val hashes = SimHashes(titleHash, authorHash);
 
         for (ti in 1..3) {
-            for (tj in ti..3) {
+            for (tj in ti+1..4) {
                 for (ai in 1..3) {
-                    for (aj in ai..3) {
+                    for (aj in ai+1..4) {
                         val hash = hashes.getByIndex(ti, tj, ai, aj)
                         maps.getByIndex(ti, tj, ai, aj).put(hash, lite)
                     }

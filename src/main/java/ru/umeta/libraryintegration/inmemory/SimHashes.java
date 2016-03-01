@@ -23,9 +23,9 @@ public class SimHashes {
         tBytes[3] = title.hashPart4();
 
         for (int ti = 1; ti <= 3; ti++) {
-            for (int tj = ti+1; tj <= 3; tj++) {
+            for (int tj = ti+1; tj <= 4; tj++) {
                 for (int ai = 1; ai <=3; ai++) {
-                    for (int aj = ai+1; aj <=3; aj++) {
+                    for (int aj = ai+1; aj <=4; aj++) {
                         hashes[ti-1][tj-1][ai-1][aj-1] = getHashWithoutYear(
                                 tBytes[ti-1],
                                 tBytes[tj-1],

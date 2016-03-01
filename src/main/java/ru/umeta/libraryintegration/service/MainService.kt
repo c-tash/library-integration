@@ -51,12 +51,16 @@ object MainService : Closeable {
             val documents = documentService.getDocuments()
             val marked = TLongHashSet();
             var i = 1;
+            var iterationsLength = 0
+            var iterationsSetInter = 0
             for (documentLite in documents) {
                 if (!marked.contains(documentLite.id)) {
                     writer.write("SECTION $i\n")
                     i++
-                    val duplicates = documentService.findEnrichedDocuments(documentLite)
-                    for (duplicate in duplicates) {
+                    val dfsResult = documentService.findEnrichedDocuments(documentLite)
+                    iterationsSetInter += dfsResult.iterationsSetInter
+                    iterationsLength += dfsResult.iterationsLength
+                    for (duplicate in dfsResult.component) {
                         val id = duplicate.id
                         marked.add(id)
                         writer.write("$id\n")
@@ -64,8 +68,15 @@ object MainService : Closeable {
                 }
                 if (i % 100000 == 0) {
                     println(i);
+                    println("Average Iterations on Sets ${iterationsSetInter/marked.size()}")
+                    println("Average Iterations on Set Lengths ${iterationsLength/marked.size()}")
+                    println("Marked ${marked.size()}")
+                    println("----------------------------------------------------------------------")
                 }
             }
+            println("Average Iterations on Sets ${iterationsSetInter*1.0/marked.size()}")
+            println("Average Iterations on Set Lengths ${iterationsLength*1.0/marked.size()}")
+            println("Marked ${marked.size()}")
         })
     }
 

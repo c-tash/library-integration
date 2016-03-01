@@ -8,6 +8,7 @@ import ru.umeta.libraryintegration.model.EnrichedDocument
 import java.io.File
 import java.io.IOException
 import java.nio.charset.Charset
+import java.nio.file.Files
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -62,31 +63,26 @@ object EnrichedDocumentFsPersister : AutoCloseable {
     fun applyToPersisted(consumer: (EnrichedDocument) -> Unit): Long {
         var lastId: Long = 0
         try {
-            val it = FileUtils.lineIterator(documentStorageFile, UTF_8)
-            try {
-                while (it.hasNext()) {
-                    try {
-                        val line = it.nextLine()
-                        val splitStrings = StringUtils.tokenizeToStringArray(line, SEPARATOR)
+            Files.lines(documentStorageFile.toPath()).forEach {
+                try {
+                    val line = it
+                    val splitStrings = StringUtils.tokenizeToStringArray(line, SEPARATOR)
 
-                        if (splitStrings.size != 5) {
-                            continue
-                        }
-
-                        val id = splitStrings[0].toLong()
-                        val author = splitStrings[1].toLong()
-                        val title = splitStrings[2].toLong()
-                        val isbn = splitStrings[3]
-                        val publishYear = if ("null" == splitStrings[4]) null else splitStrings[4].toInt()
-                        val document = EnrichedDocument(id, title, author, isbn, null, Date(), publishYear)
-                        lastId = Math.max(id, lastId)
-                        consumer(document)
-                    } catch (e: NumberFormatException) {
-                        println("One of the number ids is not a number.")
+                    if (splitStrings.size != 5) {
+                        return@forEach
                     }
+
+                    val id = splitStrings[0].toLong()
+                    val author = splitStrings[1].toLong()
+                    val title = splitStrings[2].toLong()
+                    val isbn = splitStrings[3]
+                    val publishYear = if ("null" == splitStrings[4]) null else splitStrings[4].toInt()
+                    val document = EnrichedDocument(id, title, author, isbn, null, Date(), publishYear)
+                    lastId = Math.max(id, lastId)
+                    consumer(document)
+                } catch (e: NumberFormatException) {
+                    println("One of the number ids is not a number.")
                 }
-            } finally {
-                LineIterator.closeQuietly(it)
             }
         } catch (e: IOException) {
             println("Cannot open the storage file")
