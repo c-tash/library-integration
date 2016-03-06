@@ -1,6 +1,7 @@
 package ru.umeta.libraryintegration.controller
 
 import ru.umeta.libraryintegration.service.MainService
+import java.util.*
 
 /**
  * The Main Rest Controller
@@ -17,10 +18,13 @@ fun main(args: Array<String>) {
             it.parseDirectoryInit(args[1])
         }
         "-find" -> MainService.use {
+            val start = System.currentTimeMillis();
             it.find()
+            println((System.currentTimeMillis() - start)/1000)
         }
         "-collect" -> MainService.use {
-            it.collect();
+            it.collect()
+            println(Date())
         }
     }
 

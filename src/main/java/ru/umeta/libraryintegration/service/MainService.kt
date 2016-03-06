@@ -51,13 +51,16 @@ object MainService : Closeable {
             val documents = documentService.getDocuments()
             val marked = TLongHashSet();
             var i = 1;
-            var iterationsLength = 0
-            var iterationsSetInter = 0
+            var iterationsLength = 0L
+            var iterationsSetInter = 0L
             for (documentLite in documents) {
-                if (!marked.contains(documentLite.id)) {
+                val pivotId = documentLite.id
+                if (!marked.contains(pivotId)) {
+                    marked.add(pivotId)
                     writer.write("SECTION $i\n")
+                    writer.write("$pivotId\n")
                     i++
-                    val dfsResult = documentService.findEnrichedDocuments(documentLite)
+                    val dfsResult = documentService.findEnrichedDocuments(documentLite, marked)
                     iterationsSetInter += dfsResult.iterationsSetInter
                     iterationsLength += dfsResult.iterationsLength
                     for (duplicate in dfsResult.component) {

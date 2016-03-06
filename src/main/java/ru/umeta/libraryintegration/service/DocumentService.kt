@@ -1,6 +1,5 @@
 package ru.umeta.libraryintegration.service
 
-import com.sun.deploy.util.OrderedHashSet
 import gnu.trove.set.hash.TLongHashSet
 import org.springframework.util.StringUtils
 import ru.umeta.libraryintegration.inmemory.EnrichedDocumentRepository
@@ -10,7 +9,6 @@ import ru.umeta.libraryintegration.json.UploadResult
 import ru.umeta.libraryintegration.model.EnrichedDocument
 import ru.umeta.libraryintegration.model.EnrichedDocumentLite
 import java.util.*
-
 
 
 /**
@@ -62,81 +60,57 @@ object DocumentService : AutoCloseable {
         return UploadResult(parsedDocs, newEnriched)
     }
 
-    fun findEnrichedDocuments(document: EnrichedDocumentLite): DFS {
+    fun findEnrichedDocuments(cur: EnrichedDocumentLite, used: TLongHashSet): DFS {
+        val authorId = cur.authorId
+        val titleId = cur.titleId
+        val authorTokens = stringHashService.getById(authorId).tokens
+        val titleTokens = stringHashService.getById(titleId).tokens
+        used.add(cur.id)
+        //filter documents which have the nearest measure of 0.7 or more
+        var nearDuplicates = enrichedDocumentRepository.getNearDuplicates(cur, used)
+        var iterationsLength = 0L
+        var iterationsSetInter = 0L
+        nearDuplicates = nearDuplicates.filter {
+            if (used.contains(it.id)) {
+                false
+            } else {
+                val itAuthorTokens = stringHashService.getById(it.authorId).tokens
+                var authorTokensRatio: Double = authorTokens.size() * 1.0 / itAuthorTokens.size()
+                if (authorTokensRatio > 1) {
+                    authorTokensRatio = 1.0 / authorTokensRatio
+                }
 
-        val dfs = DFS()
-        dfs.apply(document);
+                if (authorTokensRatio < 0.4) {
+                    iterationsLength++
+                    false
+                } else {
+                    val itTitleTokens = stringHashService.getById(it.titleId).tokens
+                    var titleTokensRatio: Double = titleTokens.size() * 1.0 / itTitleTokens.size()
+                    if (titleTokensRatio > 1) {
+                        titleTokensRatio = 1.0 / titleTokensRatio
+                    }
 
-        return dfs;
-    }
-
-    class DFS {
-
-        val used = TLongHashSet()
-        val component = ArrayList<EnrichedDocumentLite>()
-        var filtered = HashSet<EnrichedDocumentLite>()
-        var stack = Stack<EnrichedDocumentLite>()
-        var iterationsLength = 0;
-        var iterationsSetInter = 0;
-
-        fun apply(document: EnrichedDocumentLite) {
-            stack.add(document)
-            while (!stack.isEmpty()) {
-                val cur = stack.pop()
-                val id = cur.id
-                if (!used.contains(id)) {
-                    val authorId = cur.authorId
-                    val titleId = cur.titleId
-                    val authorTokens = stringHashService.getById(authorId).tokens
-                    val titleTokens = stringHashService.getById(titleId).tokens
-                    used.add(id)
-                    component.add(cur)
-                    //filter documents which have the nearest measure of 0.7 or more
-                    val current = filtered;
-                    val nearDuplicates = enrichedDocumentRepository.getNearDuplicates(cur, current)
-
-
-                    filtered = HashSet(nearDuplicates.filter {
-                        if (used.contains(it.id)) {
-                            false
-                        } else {
-                            val itAuthorTokens = stringHashService.getById(it.authorId).tokens
-                            var authorTokensRatio: Double = authorTokens.size() * 1.0 / itAuthorTokens.size()
-                            if (authorTokensRatio > 1) {
-                                authorTokensRatio = 1.0 / authorTokensRatio
-                            }
-
-                            if (authorTokensRatio < 0.4) {
-                                iterationsLength++
-                                false
-                            } else {
-                                val itTitleTokens = stringHashService.getById(it.titleId).tokens
-                                var titleTokensRatio: Double = titleTokens.size() * 1.0 / itTitleTokens.size()
-                                if (titleTokensRatio > 1) {
-                                    titleTokensRatio = 1.0 / titleTokensRatio
-                                }
-
-                                if (authorTokensRatio + titleTokensRatio < 0.7 * 2) {
-                                    iterationsLength++
-                                    false
-                                } else {
-                                    iterationsSetInter++;
-                                    (stringHashService.distance(authorTokens, itAuthorTokens) + stringHashService.distance
-                                    (titleTokens, itTitleTokens) >= 0.7 * 2)
-                                }
-                            }
-                        }
-                    })
-
-                    current.forEach { filtered.add(it) }
-                    for (duplicate in filtered) {
-                        stack.add(duplicate)
+                    if (authorTokensRatio + titleTokensRatio < 0.7 * 2) {
+                        iterationsLength++
+                        false
+                    } else {
+                        iterationsSetInter++
+                        (stringHashService.distance(authorTokens, itAuthorTokens) + stringHashService.distance
+                        (titleTokens, itTitleTokens) >= 0.7 * 2)
                     }
                 }
             }
         }
 
+        val dfs = DFS(nearDuplicates, iterationsLength, iterationsSetInter)
+        return dfs
     }
+
+    data class DFS(
+        val component: List<EnrichedDocumentLite>,
+        var iterationsLength: Long,
+        var iterationsSetInter: Long)
+
 
 
     fun addNoise(parseResult: ParseResult, saltLevel: Int): List<ParseResult>? {
@@ -177,7 +151,7 @@ object DocumentService : AutoCloseable {
     }
 
     fun getDocuments(): List<EnrichedDocumentLite> {
-        return enrichedDocumentRepository.list
+        return enrichedDocumentRepository.getList();
     }
 
     fun processDocumentListInit(resultList: List<ParseResult>, nothing: Nothing?): Any {

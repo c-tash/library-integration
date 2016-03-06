@@ -2,6 +2,7 @@ package ru.umeta.libraryintegration.inmemory
 
 import com.google.common.collect.ArrayListMultimap
 import com.google.common.collect.Multimap
+import gnu.trove.set.hash.TLongHashSet
 import ru.umeta.libraryintegration.fs.EnrichedDocumentFsPersister
 import ru.umeta.libraryintegration.model.Document
 import ru.umeta.libraryintegration.model.EnrichedDocument
@@ -25,7 +26,7 @@ import java.util.*
 object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
 
     override fun getNearDuplicates(document: EnrichedDocumentLite): List<EnrichedDocumentLite> {
-        return getNearDuplicates(document, HashSet<EnrichedDocumentLite>())
+        return getNearDuplicates(document, TLongHashSet())
     }
 
     override fun getNearDuplicates(document: Document): MutableList<EnrichedDocumentLite> {
@@ -52,7 +53,7 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
     }
 
 
-    override fun getNearDuplicates(document: EnrichedDocumentLite, current: Set<EnrichedDocumentLite>)
+    override fun getNearDuplicates(document: EnrichedDocumentLite, current: TLongHashSet)
             : List<EnrichedDocumentLite> {
         val authorId = document.authorId
         val titleId = document.titleId
@@ -65,7 +66,7 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
         val result = HashSet<EnrichedDocumentLite>()
 
         val filterFunction = {it: EnrichedDocumentLite ->
-            if (!current.contains(it)) {
+            if (!current.contains(it.id)) {
                 result.add(it)
             }
         }
@@ -180,6 +181,10 @@ object EnrichedDocumentRepository : IEnrichedDocumentRepository, AutoCloseable {
         enrichedDocument.id = identity++
         //putIntoMaps(enrichedDocument)
         fsPersister.save(enrichedDocument)
+    }
+
+    fun getList(): List<EnrichedDocumentLite> {
+        return list;
     }
 
 }

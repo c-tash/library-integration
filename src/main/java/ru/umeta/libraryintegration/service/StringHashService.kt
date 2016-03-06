@@ -95,7 +95,7 @@ object StringHashService : AutoCloseable {
         val intersection = TIntHashSet(tokens1)
 
         union.addAll(tokens2)
-        intersection.retainAll(tokens2)
+        intersection.retainAllStream(tokens1)
 
         return (intersection.size() * 1.0) / (union.size() * 1.0)
     }
@@ -131,6 +131,18 @@ object StringHashService : AutoCloseable {
         }
     }
 
+}
+
+fun TIntHashSet.retainAllStream(otherSet: TIntHashSet): Boolean {
+    if (this === otherSet) {
+        return false
+    }
+    var modified = false
+    val iter = iterator()
+    while (iter.hasNext()) {
+
+    }
+    return modified
 }
 
 public fun getTokens(string: String): TIntHashSet {
