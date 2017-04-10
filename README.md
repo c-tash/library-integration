@@ -7,8 +7,6 @@ The only requirement is the data format - [MODS](http://www.loc.gov/standards/mo
 ---
 ## It features:
 
-* A simple REST API for sending new data.
-* Support for PostgreSQL, MariaDB.
 * Near-duplicate detection algorithm based on SimHash.
 
 ---
@@ -16,7 +14,7 @@ The only requirement is the data format - [MODS](http://www.loc.gov/standards/mo
 ### Version 1.1
 Version 1.1 is a console application, this was changed due to overhead of a web service.
 Requirements:
-1. Redis for Windows - in-memory database.
+1. Redis for Windows - in-memory database. (For Linux you can get redis through `apt-get install redis-server` or `yum install redis` depending on your package manager.)
 2. Java 8+.
 
 To run:
