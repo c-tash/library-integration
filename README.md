@@ -1,6 +1,6 @@
-# library-integration
-Library Integration project
-==========
+# Library Integration project
+[![Build Status](https://travis-ci.org/c-tash/library-integration.svg?branch=master)](https://travis-ci.org/c-tash/library-integration)
+
 This project's goal is to store and merge all of the library data in one place.
 The only requirement is the data format - [MODS](http://www.loc.gov/standards/mods/)
 
