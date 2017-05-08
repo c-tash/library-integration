@@ -2,14 +2,21 @@ package ru.umeta.libraryintegration.service;
 
 import org.apache.commons.io.output.FileWriterWithEncoding;
 import org.eclipse.collections.impl.factory.Lists;
+import org.jetbrains.annotations.Nullable;
 import ru.umeta.libraryintegration.inmemory.InMemoryRepository;
 import ru.umeta.libraryintegration.model.EnrichedDocumentLite;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +32,7 @@ import static ru.umeta.libraryintegration.service.StringHashServiceKt.getBigramm
  */
 public class JavaDuplicateService {
 
+    public static final String RESULT_FILE_NAME = "result";
     private final InMemoryRepository repository;
 
     private final StringHashService stringService;
@@ -41,65 +49,16 @@ public class JavaDuplicateService {
     public void simpleParse() {
         Section section = new Section();
         long i = 1;
-        try (Writer writer = new FileWriterWithEncoding("result", "UTF-8");
+
+
+        try (Writer writer = Files.newBufferedWriter(Paths.get(RESULT_FILE_NAME), StandardCharsets.UTF_8);
                 BufferedReader br = new BufferedReader(new FileReader(new File("duplicates.blob")))) {
             for (String line = br.readLine();line != null; line = br.readLine()) {
                 if (line.contains("SE")) {
                     if (!section.list.isEmpty()) {
-                        EnrichedDocumentLite headDoc = section.getList().get(0);
-                        int idHead = headDoc.getId();
-                        if (repository.getDocMarked()[idHead]) {
-                            section = new Section();
+                        section = handleSection(section, writer);
+                        if (section == null)
                             continue;
-                        } else {
-                            repository.getDocMarked()[idHead] = true;
-                        }
-                        section.head = headDoc;
-                        String authorHead = repository.getString(headDoc.getAuthorId());
-                        List<Bigramm> aTokensHead = getBigrammWeighted(authorHead);
-                        String titleHead = repository.getString(headDoc.getTitleId());
-                        List<Bigramm> tTokensHead = getBigrammWeighted(titleHead);
-                        EnrichedDocumentLite[] results = new EnrichedDocumentLite[section.getList().size()];
-                        AtomicInteger count = new AtomicInteger(1);
-                        section.getList().parallelStream().forEach(docIt -> {
-                            int id = docIt.getId();
-                            if (repository.getDocMarked()[id]) {
-                                return;
-                            }
-
-                            if (docIt == headDoc) {
-                                return;
-                            }
-                            String aStringIt = repository.getString(docIt.getAuthorId());
-                            double aRatio = distanceWithTheorems(authorHead, aStringIt, aTokensHead, null, 0.7);
-                            if (aRatio >= 0.7) {
-                                String tStringIt = repository.getString(docIt.getTitleId());
-                                double tRatio = distanceWithTheorems(titleHead, tStringIt, tTokensHead, null, 0.7);
-                                if (tRatio >= 0.7) {
-                                    EnrichedDocumentLite clone = docIt.clone();
-                                    results[count.getAndIncrement()] = clone;
-                                    clone.setRatio((aRatio + tRatio) / 2);
-                                    repository.getDocMarked()[id] = true;
-                                }
-                            }
-                        });
-                        section.list = Arrays.stream(results).parallel()
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toList());
-                        try {
-                            writer.write("SE\n");
-                            writer.write(section.head.getId() + "\n");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        section.list.forEach(itResult -> {
-                            try {
-                                writer.write(itResult.getId() + "|" + itResult.getRatio() + "\n");
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
-                        section = new Section();
                     }
                 } else {
                     int id = Integer.parseInt(line);
@@ -122,6 +81,65 @@ public class JavaDuplicateService {
             System.out.println("T2 " + StringHashServiceKt.getDistanceCounterOptim2());
         }
 
+    }
+
+    @Nullable
+    private Section handleSection(Section section, Writer writer) {
+        EnrichedDocumentLite headDoc = section.getList().get(0);
+        int idHead = headDoc.getId();
+        if (repository.getDocMarked()[idHead]) {
+            return null;
+        } else {
+            repository.getDocMarked()[idHead] = true;
+        }
+        section.head = headDoc;
+        String authorHead = repository.getString(headDoc.getAuthorId());
+        List<Bigramm> aTokensHead = getBigrammWeighted(authorHead);
+        String titleHead = repository.getString(headDoc.getTitleId());
+        List<Bigramm> tTokensHead = getBigrammWeighted(titleHead);
+        EnrichedDocumentLite[] results = new EnrichedDocumentLite[section.getList().size()];
+        AtomicInteger count = new AtomicInteger(1);
+        section.getList().parallelStream().forEach(docIt -> {
+            int id = docIt.getId();
+            if (repository.getDocMarked()[id]) {
+                return;
+            }
+
+            if (docIt == headDoc) {
+                return;
+            }
+            String aStringIt = repository.getString(docIt.getAuthorId());
+            double aRatio = distanceWithTheorems(authorHead, aStringIt, aTokensHead, null, 0.7);
+            if (aRatio >= 0.7) {
+                String tStringIt = repository.getString(docIt.getTitleId());
+                double tRatio = distanceWithTheorems(titleHead, tStringIt, tTokensHead, null, 0.7);
+                if (tRatio >= 0.7) {
+                    EnrichedDocumentLite clone = docIt.clone();
+                    results[count.getAndIncrement()] = clone;
+                    clone.setRatio((aRatio + tRatio) / 2);
+                    repository.getDocMarked()[id] = true;
+                }
+            }
+        });
+        section.list = Arrays.stream(results)
+                .parallel()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        try {
+            writer.write("SE\n");
+            writer.write(section.head.getId() + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        section.list.forEach(itResult -> {
+            try {
+                writer.write(itResult.getId() + "|" + itResult.getRatio() + "\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        section = new Section();
+        return section;
     }
 
     public void parseDebug() {

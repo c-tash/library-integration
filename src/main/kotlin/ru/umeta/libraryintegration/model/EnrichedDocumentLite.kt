@@ -1,7 +1,5 @@
 package ru.umeta.libraryintegration.model
 
-import java.nio.ByteBuffer
-
 /**
  * Created by k.kosolapov on 11/26/2015.
  */
@@ -39,8 +37,5 @@ data class EnrichedDocumentLite(
 
     fun clone(): EnrichedDocumentLite {
         return EnrichedDocumentLite(id, authorId, authorHash, titleId, titleHash, isbn, publishYear, ratio)
-    }
-
-    companion object {
     }
 }

@@ -182,7 +182,7 @@ class Bigramm : Comparable<Bigramm> {
 
 
 fun getBigrammWeighted(string: String): List<Bigramm> {
-    if (string.length == 0) {
+    if (string.isEmpty()) {
         return emptyList()
     }
 

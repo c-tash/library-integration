@@ -66,7 +66,7 @@ constructor(val parser: IXMLParser,
         logger.info("Start finding duplicates.")
         (FileWriterWithEncoding(File("duplicates.blob"), Charset.forName("UTF-8"), false).use {
             writer ->
-            var i = 1;
+            var i = 1
             var iterationsIsbn = 0L
             var iterationsYear = 0L
             var iterationsLeft = 0L
@@ -83,11 +83,11 @@ constructor(val parser: IXMLParser,
                     iterationsIsbn += dfsResult.iterationsIsbn
                     iterationsYear += dfsResult.iterationsYear
                     iterationsLeft += dfsResult.remainingDocs
-                    dfsResult.component.forEach { duplicate ->
-                        writer.write("${duplicate.id}\n")
+                    dfsResult.component.forEach { (id) ->
+                        writer.write("$id\n")
                     }
                     if (id % 100000 == 0) {
-                        logger.info(i.toString());
+                        logger.info(i.toString())
                         logger.info("Average Iterations on Isbn ${iterationsIsbn * 1.0 / (id - startId)}")
                         logger.info("Average Iterations on Publish Year ${iterationsYear * 1.0 / (id - startId)}")
                         logger.info("Average Iterations Left ${iterationsLeft * 1.0 / (id - startId)}")
@@ -118,7 +118,7 @@ constructor(val parser: IXMLParser,
             val size = resultList.size
             total += size
             logger.info("resultList size is " + size)
-            val uploadResult = documentService.processDocumentListInit(resultList)
+            documentService.processDocumentListInit(resultList)
             val endTime = System.nanoTime()
             logger.info("The documents bulk is added in " + (endTime - startTime).toDouble() / 1000000000.0 + ". Total: " + total)
         }
@@ -128,12 +128,12 @@ constructor(val parser: IXMLParser,
 
     fun collect() {
         repository.fillMapsFromRedisWithTokens()
-        JavaDuplicateService(repository, stringHashService).parse();
+        JavaDuplicateService(repository, stringHashService).parse()
     }
 
     fun collectLegacy() {
         repository.fillMapsFromRedisWithTokens()
-        JavaDuplicateService(repository, stringHashService).parserLegacy();
+        JavaDuplicateService(repository, stringHashService).parserLegacy()
     }
 
     fun strings() {
@@ -151,18 +151,18 @@ constructor(val parser: IXMLParser,
 
     fun collectDebug() {
         repository.fillMapsFromRedisWithTokens()
-        JavaDuplicateService(repository, stringHashService).parseDebug();
+        JavaDuplicateService(repository, stringHashService).parseDebug()
     }
 
     fun getStat() {
         val map = HashMap<Int, Int>()
         var duplicates = 0
-        var allCount = 0;
-        BufferedReader(FileReader(File("result"))).use {
+        var allCount = 0
+        BufferedReader(FileReader(File("result_7200K"))).use {
             var line = it.readLine()
             var curSize = -1
             while (line != null) {
-                if ("SE".equals(line)) {
+                if ("SE" == line) {
                     if (curSize > 0) {
                         duplicates += curSize
                     }
@@ -175,11 +175,11 @@ constructor(val parser: IXMLParser,
                     if (curSize > 100) {
                         println("$allCount $curSize")
                     }
-                    curSize = -1;
+                    curSize = -1
                 } else {
                     curSize++
                 }
-                line = it.readLine();
+                line = it.readLine()
                 allCount++
             }
         }
